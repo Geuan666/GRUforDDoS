@@ -21,14 +21,14 @@ logger = logging.getLogger(__name__)
 # 原始标签到一级分类的映射
 LEVEL1_MAPPING = {
     "BENIGN": "BENIGN",
-    "DrDoS_DNS": "DoS",
-    "DrDoS_LDAP": "DoS",
-    "DrDoS_MSSQL": "DoS",
-    "DrDoS_NTP": "DoS",
-    "DrDoS_NetBIOS": "DoS",
-    "DrDoS_SNMP": "DoS",
-    "DrDoS_SSDP": "DoS",
-    "DrDoS_UDP": "DoS",
+    "DNS": "DoS",
+    "LDAP": "DoS",
+    "MSSQL": "DoS",
+    "NTP": "DoS",
+    "NetBIOS": "DoS",
+    "SNMP": "DoS",
+    "SSDP": "DoS",
+    "UDP": "DoS",
     "Syn": "DoS",
     "UDP-lag": "DoS",
     "Portmap": "Protocol",
@@ -37,14 +37,14 @@ LEVEL1_MAPPING = {
 
 # 原始标签到二级分类的映射
 LEVEL2_MAPPING = {
-    "DrDoS_DNS": "DrDoS",
-    "DrDoS_LDAP": "DrDoS",
-    "DrDoS_MSSQL": "DrDoS",
-    "DrDoS_NTP": "DrDoS",
-    "DrDoS_NetBIOS": "DrDoS",
-    "DrDoS_SNMP": "DrDoS",
-    "DrDoS_SSDP": "DrDoS",
-    "DrDoS_UDP": "DrDoS",
+    "DNS": "DrDoS",
+    "LDAP": "DrDoS",
+    "MSSQL": "DrDoS",
+    "NTP": "DrDoS",
+    "NetBIOS": "DrDoS",
+    "SNMP": "DrDoS",
+    "SSDP": "DrDoS",
+    "UDP": "DrDoS",
     "Syn": "Generic-DoS",
     "UDP-lag": "Generic-DoS",
     "Portmap": "Portmap",
@@ -53,14 +53,14 @@ LEVEL2_MAPPING = {
 
 # 原始标签保持不变用于三级分类
 LEVEL3_MAPPING = {
-    "DrDoS_DNS": "DrDoS_DNS",
-    "DrDoS_LDAP": "DrDoS_LDAP",
-    "DrDoS_MSSQL": "DrDoS_MSSQL",
-    "DrDoS_NTP": "DrDoS_NTP",
-    "DrDoS_NetBIOS": "DrDoS_NetBIOS",
-    "DrDoS_SNMP": "DrDoS_SNMP",
-    "DrDoS_SSDP": "DrDoS_SSDP",
-    "DrDoS_UDP": "DrDoS_UDP",
+    "DNS": "DNS",
+    "LDAP": "LDAP",
+    "MSSQL": "MSSQL",
+    "NTP": "NTP",
+    "NetBIOS": "NetBIOS",
+    "SNMP": "SNMP",
+    "SSDP": "SSDP",
+    "UDP": "UDP",
     "Syn": "Syn",
     "UDP-lag": "UDP-lag"
 }
@@ -81,14 +81,14 @@ CLASS_MAPPINGS = {
         "TFTP": 1
     },
     4: {  # 三级分类 - DrDoS
-        "DrDoS_DNS": 0,
-        "DrDoS_LDAP": 1,
-        "DrDoS_MSSQL": 2,
-        "DrDoS_NTP": 3,
-        "DrDoS_NetBIOS": 4,
-        "DrDoS_SNMP": 5,
-        "DrDoS_SSDP": 6,
-        "DrDoS_UDP": 7
+        "DNS": 0,
+        "LDAP": 1,
+        "MSSQL": 2,
+        "NTP": 3,
+        "NetBIOS": 4,
+        "SNMP": 5,
+        "SSDP": 6,
+        "UDP": 7
     },
     5: {  # 三级分类 - Generic-DoS
         "Syn": 0,
@@ -452,7 +452,8 @@ class DataProcessor:
             hierarchical_labels[3] = level2_proto_labels
 
         # 第三级: DrDoS细分为8类
-        drdos_mask = np.array([label.startswith("DrDoS_") for label in str_labels])
+        drdos_classes = ['DNS', 'LDAP', 'MSSQL', 'NTP', 'NetBIOS', 'SNMP', 'SSDP', 'UDP']
+        drdos_mask = np.isin(str_labels, drdos_classes)
         if np.any(drdos_mask):
             level3_drdos_labels = np.full(len(str_labels), -1)
             level3_drdos_labels[drdos_mask] = np.array(

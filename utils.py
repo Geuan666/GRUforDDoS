@@ -33,8 +33,8 @@ HIERARCHICAL_CLASS_NAMES = {
     '1': ['BENIGN', 'DoS', 'Protocol'],  # 一级分类
     '2_dos': ['DrDoS', 'Generic-DoS'],  # 二级DoS分类
     '2_protocol': ['Portmap', 'TFTP'],  # 二级Protocol分类
-    '3_drdos': ['DrDoS_DNS', 'DrDoS_LDAP', 'DrDoS_MSSQL', 'DrDoS_NTP',
-                'DrDoS_NetBIOS', 'DrDoS_SNMP', 'DrDoS_SSDP', 'DrDoS_UDP'],  # 三级DrDoS分类
+    '3_drdos': ['DNS', 'LDAP', 'MSSQL', 'NTP',
+                'NetBIOS', 'SNMP', 'SSDP', 'UDP'],  # 三级DrDoS分类
     '3_generic_dos': ['Syn', 'UDP-lag']  # 三级Generic-DoS分类
 }
 

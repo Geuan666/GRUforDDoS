@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import logging
 from typing import Dict, List, Tuple, Optional, Union
-
+from utils import CLASS_MAP
 logger = logging.getLogger(__name__)
 
 
@@ -32,7 +32,6 @@ class BaseGRUModel(nn.Module):
         self.num_classes = num_classes
         self.dropout_rate = dropout_rate
 
-        # GRU层 - 比LSTM更简单且通常足够用
         self.gru = nn.GRU(
             input_size=input_size,
             hidden_size=hidden_size,
@@ -122,7 +121,7 @@ class Level1Classifier(BaseGRUModel):
     一级分类器: BENIGN / DoS / Protocol (3类)
     """
 
-    def __init__(self, input_size=1, hidden_size=128, num_layers=2, dropout_rate=0.3):
+    def __init__(self, input_size=1, hidden_size=128, num_layers=4, dropout_rate=0.3):
         super(Level1Classifier, self).__init__(
             input_size=input_size,
             hidden_size=hidden_size,
@@ -138,7 +137,7 @@ class Level2DosClassifier(BaseGRUModel):
     二级分类器(DoS): DrDoS / Generic-DoS (2类)
     """
 
-    def __init__(self, input_size=1, hidden_size=128, num_layers=2, dropout_rate=0.3):
+    def __init__(self, input_size=1, hidden_size=64, num_layers=2, dropout_rate=0.3):
         super(Level2DosClassifier, self).__init__(
             input_size=input_size,
             hidden_size=hidden_size,
@@ -254,8 +253,8 @@ class HierarchicalDDoSDetector(nn.Module):
         self.level2_dos_classes = ['DrDoS', 'Generic-DoS']
         self.level2_protocol_classes = ['Portmap', 'TFTP']
         self.level3_drdos_classes = [
-            'DrDoS_DNS', 'DrDoS_LDAP', 'DrDoS_MSSQL', 'DrDoS_NTP',
-            'DrDoS_NetBIOS', 'DrDoS_SNMP', 'DrDoS_SSDP', 'DrDoS_UDP'
+            'DNS', 'LDAP', 'MSSQL', 'NTP',
+            'NetBIOS', 'SNMP', 'SSDP', 'UDP'
         ]
         self.level3_generic_dos_classes = ['Syn', 'UDP-lag']
 
@@ -425,7 +424,7 @@ class HierarchicalDDoSDetector(nn.Module):
 
         # 创建最终预测数组
         final_preds = torch.full((batch_size,), -1, device=device, dtype=torch.long)
-        final_probs = torch.zeros((batch_size, 17), device=device)
+        final_probs = torch.zeros((batch_size, 13), device=device)
 
         # 直接分类为BENIGN的样本
         benign_mask = (results['level1']['preds'] == 0)
@@ -437,8 +436,8 @@ class HierarchicalDDoSDetector(nn.Module):
             portmap_mask = protocol_mask & (results['level2_protocol']['preds'] == 0)
             tftp_mask = protocol_mask & (results['level2_protocol']['preds'] == 1)
 
-            final_preds[portmap_mask] = 12  # Portmap类别索引
-            final_preds[tftp_mask] = 14  # TFTP类别索引
+            final_preds[portmap_mask] = 6  # Portmap类别索引
+            final_preds[tftp_mask] = 10  # TFTP类别索引
 
         # Syn 和 UDP-lag (从Generic-DoS细分)
         if 'level3_generic_dos' in results:
@@ -446,18 +445,27 @@ class HierarchicalDDoSDetector(nn.Module):
             syn_mask = generic_dos_mask & (results['level3_generic_dos']['preds'] == 0)
             udp_lag_mask = generic_dos_mask & (results['level3_generic_dos']['preds'] == 1)
 
-            final_preds[syn_mask] = 13  # Syn类别索引
-            final_preds[udp_lag_mask] = 16  # UDP-lag类别索引
+            final_preds[syn_mask] = 9  # Syn类别索引
+            final_preds[udp_lag_mask] = 12  # UDP-lag类别索引
 
-        # DrDoS子类型 (8类)
-        if 'level3_drdos' in results:
-            drdos_mask = (results['level1']['preds'] == 1) & (results['level2_dos']['preds'] == 0)
-            for i in range(8):
-                class_mask = drdos_mask & (results['level3_drdos']['preds'] == i)
-                final_preds[class_mask] = i + 1  # DrDoS子类起始索引为1
+            # DrDoS子类型 (8类)
+            if 'level3_drdos' in results:
+                drdos_mask = (results['level1']['preds'] == 1) & (results['level2_dos']['preds'] == 0)
+                # 使用正确的映射而不是简单的i+1
+                drdos_class_map = {
+                    0: 1,  # DNS
+                    1: 2,  # LDAP
+                    2: 3,  # MSSQL
+                    3: 4,  # NTP
+                    4: 5,  # NetBIOS
+                    5: 7,  # SNMP
+                    6: 8,  # SSDP
+                    7: 11  # UDP
+                }
+                for i in range(8):
+                    class_mask = drdos_mask & (results['level3_drdos']['preds'] == i)
+                    final_preds[class_mask] = drdos_class_map[i]
 
-        # 计算概率（可选）
-        # ...（略过概率计算，因为比较复杂且不是必需的）
 
         return final_preds, final_probs
 
@@ -543,8 +551,8 @@ def get_model_classes(level):
         return ['Portmap', 'TFTP']
     elif level == '3_drdos':
         return [
-            'DrDoS_DNS', 'DrDoS_LDAP', 'DrDoS_MSSQL', 'DrDoS_NTP',
-            'DrDoS_NetBIOS', 'DrDoS_SNMP', 'DrDoS_SSDP', 'DrDoS_UDP'
+            'DNS', 'LDAP', 'MSSQL', 'NTP',
+            'NetBIOS', 'SNMP', 'SSDP', 'UDP'
         ]
     elif level == '3_generic_dos':
         return ['Syn', 'UDP-lag']
